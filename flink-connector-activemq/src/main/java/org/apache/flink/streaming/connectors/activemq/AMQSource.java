@@ -32,13 +32,7 @@ import org.apache.flink.streaming.connectors.activemq.internal.RunningChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jms.BytesMessage;
-import javax.jms.Connection;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.Session;
+import javax.jms.*;
 import java.util.HashMap;
 import java.util.Set;
 
@@ -61,6 +55,7 @@ public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
     implements ResultTypeQueryable<OUT> {
 
     private static final Logger LOG = LoggerFactory.getLogger(AMQSource.class);
+    private static final Logger readerDataLogger = LoggerFactory.getLogger("readerDataLogger");
 
     // Factory that is used to create AMQ connection
     private final ActiveMQConnectionFactory connectionFactory;
@@ -217,18 +212,20 @@ public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
             exceptionListener.checkErroneous();
 
             Message message = consumer.receive(1000);
-            if (! (message instanceof BytesMessage)) {
+            if (! (message instanceof TextMessage)) {
                 LOG.warn("Active MQ source received non bytes message: {}", message);
                 continue;
             }
-            BytesMessage bytesMessage = (BytesMessage) message;
-            byte[] bytes = new byte[(int) bytesMessage.getBodyLength()];
-            bytesMessage.readBytes(bytes);
-            OUT value = deserializationSchema.deserialize(bytes);
+            TextMessage textMessage = (TextMessage) message;
+            OUT value = deserializationSchema.deserialize(textMessage.getText().getBytes());
+            readerDataLogger.info(textMessage.getText());
+            if(value == null){
+                continue;
+            }
             synchronized (ctx.getCheckpointLock()) {
-                if (!autoAck && addId(bytesMessage.getJMSMessageID())) {
+                if (!autoAck && addId(textMessage.getJMSMessageID())) {
                     ctx.collect(value);
-                    unacknowledgedMessages.put(bytesMessage.getJMSMessageID(), bytesMessage);
+                    unacknowledgedMessages.put(textMessage.getJMSMessageID(), textMessage);
                 } else {
                     ctx.collect(value);
                 }
