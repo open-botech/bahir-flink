@@ -213,7 +213,7 @@ public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
 
             Message message = consumer.receive(1000);
             if (! (message instanceof TextMessage)) {
-                LOG.warn("Active MQ source received non bytes message: {}", message);
+                LOG.warn("Active MQ source received non text message: {}", message);
                 continue;
             }
             TextMessage textMessage = (TextMessage) message;
