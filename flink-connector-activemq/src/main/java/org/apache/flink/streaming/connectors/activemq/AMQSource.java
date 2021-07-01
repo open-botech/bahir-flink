@@ -25,6 +25,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.MessageAcknowledgingSourceBase;
+import org.apache.flink.streaming.api.functions.source.ParallelSourceFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.connectors.activemq.internal.AMQExceptionListener;
 import org.apache.flink.streaming.connectors.activemq.internal.AMQUtil;
@@ -52,7 +53,7 @@ import java.util.Set;
  * @param <OUT> type of output messages
  */
 public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
-    implements ResultTypeQueryable<OUT> {
+    implements ResultTypeQueryable<OUT>, ParallelSourceFunction<OUT> {
 
     private static final Logger LOG = LoggerFactory.getLogger(AMQSource.class);
     private static final Logger readerDataLogger = LoggerFactory.getLogger("readerDataLogger");
@@ -206,6 +207,7 @@ public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
         }
     }
 
+
     @Override
     public void run(SourceContext<OUT> ctx) throws Exception {
         while (runningChecker.isRunning()) {
@@ -232,7 +234,6 @@ public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
             }
         }
     }
-
     @Override
     public void cancel() {
         runningChecker.setIsRunning(false);
