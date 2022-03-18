@@ -25,6 +25,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.MessageAcknowledgingSourceBase;
+import org.apache.flink.streaming.api.functions.source.ParallelSourceFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.connectors.activemq.internal.AMQExceptionListener;
 import org.apache.flink.streaming.connectors.activemq.internal.AMQUtil;
@@ -32,13 +33,7 @@ import org.apache.flink.streaming.connectors.activemq.internal.RunningChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jms.BytesMessage;
-import javax.jms.Connection;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.Session;
+import javax.jms.*;
 import java.util.HashMap;
 import java.util.Set;
 
@@ -58,9 +53,10 @@ import java.util.Set;
  * @param <OUT> type of output messages
  */
 public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
-    implements ResultTypeQueryable<OUT> {
+    implements ResultTypeQueryable<OUT>, ParallelSourceFunction<OUT> {
 
     private static final Logger LOG = LoggerFactory.getLogger(AMQSource.class);
+    private static final Logger readerDataLogger = LoggerFactory.getLogger("readerDataLogger");
 
     // Factory that is used to create AMQ connection
     private final ActiveMQConnectionFactory connectionFactory;
@@ -211,31 +207,33 @@ public class AMQSource<OUT> extends MessageAcknowledgingSourceBase<OUT, String>
         }
     }
 
+
     @Override
     public void run(SourceContext<OUT> ctx) throws Exception {
         while (runningChecker.isRunning()) {
             exceptionListener.checkErroneous();
 
             Message message = consumer.receive(1000);
-            if (! (message instanceof BytesMessage)) {
-                LOG.warn("Active MQ source received non bytes message: {}", message);
+            if (! (message instanceof TextMessage)) {
+                LOG.warn("Active MQ source received non text message: {}", message);
                 continue;
             }
-            BytesMessage bytesMessage = (BytesMessage) message;
-            byte[] bytes = new byte[(int) bytesMessage.getBodyLength()];
-            bytesMessage.readBytes(bytes);
-            OUT value = deserializationSchema.deserialize(bytes);
+            TextMessage textMessage = (TextMessage) message;
+            OUT value = deserializationSchema.deserialize(textMessage.getText().getBytes());
+            readerDataLogger.info(textMessage.getText());
+            if(value == null){
+                continue;
+            }
             synchronized (ctx.getCheckpointLock()) {
-                if (!autoAck && addId(bytesMessage.getJMSMessageID())) {
+                if (!autoAck && addId(textMessage.getJMSMessageID())) {
                     ctx.collect(value);
-                    unacknowledgedMessages.put(bytesMessage.getJMSMessageID(), bytesMessage);
+                    unacknowledgedMessages.put(textMessage.getJMSMessageID(), textMessage);
                 } else {
                     ctx.collect(value);
                 }
             }
         }
     }
-
     @Override
     public void cancel() {
         runningChecker.setIsRunning(false);

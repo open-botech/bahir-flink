@@ -23,7 +23,7 @@
     <artifactId>apache</artifactId>
     <version>24</version>
   </parent>
-  <groupId>org.apache.bahir</groupId>
+  <groupId>com.botech</groupId>
   <artifactId>bahir-flink-parent_2.11</artifactId>
   <version>1.1-SNAPSHOT</version>
   <packaging>pom</packaging>
@@ -91,7 +91,6 @@
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
 
-    <!-- Flink version -->
     <flink.version>1.14.2</flink.version>
     <scala.binary.version>2.11</scala.binary.version>
     <scala.version>2.11.12</scala.version>
@@ -136,7 +135,18 @@
       </snapshots>
     </pluginRepository>
   </pluginRepositories>
-
+  <distributionManagement>
+    <repository>
+      <id> botech-common-release</id>
+      <name> Botech Common Release</name>
+      <url> http://192.168.3.249:8081/repository/botech-common-release/</url>
+    </repository>
+    <snapshotRepository>
+      <id>botech-common-snapshots</id>
+      <name>Botech Common Snapshots</name>
+      <url>http://192.168.3.249:8081/repository/botech-common-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
   <dependencies>
     <!-- This is needed by the scalatest plugin -->
     <dependency>

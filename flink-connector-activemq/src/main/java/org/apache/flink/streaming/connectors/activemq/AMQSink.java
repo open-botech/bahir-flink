@@ -25,13 +25,7 @@ import org.apache.flink.streaming.connectors.activemq.internal.AMQUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jms.BytesMessage;
-import javax.jms.Connection;
-import javax.jms.DeliveryMode;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.MessageProducer;
-import javax.jms.Session;
+import javax.jms.*;
 
 /**
  * Sink class for writing data into ActiveMQ queue.
@@ -131,8 +125,8 @@ public class AMQSink<IN> extends RichSinkFunction<IN> {
     public void invoke(IN value, Context context) throws Exception {
         try {
             byte[] bytes = serializationSchema.serialize(value);
-            BytesMessage message = session.createBytesMessage();
-            message.writeBytes(bytes);
+            TextMessage message = session.createTextMessage();
+            message.setText(new String(bytes));
             producer.send(message);
         } catch (JMSException e) {
             if (logFailuresOnly) {
